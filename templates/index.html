@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #4facfe 0%, #00c6fb 100%);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 10px;
+    }
+
+    .container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+        width: 100%;
+        max-width: 900px;
+        padding: 20px;
+        overflow: auto; /* enables scrolling on container */
+        max-height: 90vh; /* vertical scroll if too tall */
+    }
+
+    h1 {
+        color: #1e3a5f;
+        text-align: center;
+        margin-bottom: 5px;
+    }
+
+    .subtitle {
+        text-align: center;
+        color: #4a6fa5;
+        margin-bottom: 20px;
+    }
+
+    .data-grid {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .card {
+        flex: 1;
+        min-width: 150px;
+        background: linear-gradient(135deg, #e0f7ff, #ffffff);
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+    }
+
+    .card h2 { font-size: 16px; margin-bottom: 5px; }
+    .card p { font-size: 20px; font-weight: bold; }
+
+    .form-group {
+        margin-top: 8px;
+        text-align: left;
+    }
+
+    .card input {
+        width: 100%;
+        padding: 5px;
+        border: 1.5px solid #ddd;
+        border-radius: 5px;
+        font-size: 13px;
+    }
+
+    .warning {
+        background: #ff6b6b;
+        color: white;
+        padding: 10px;
+        border-radius: 8px;
+        text-align: center;
+        margin-bottom: 15px;
+        font-weight: bold;
+    }
+
+    .hidden { display: none; }
+
+    /* Chart wrapper scrollable */
+    .chart-wrapper {
+        overflow: auto; /* scrollbars appear if chart is larger than container */
+        width: 100%;
+        height: 400px; /* vertical scroll if needed */
+        border: 1px solid #ddd;
+        padding: 5px;
+    }
+
+    #chart {
+        min-width: 1200px; /* width grows with data */
+        min-height: 350px;
+    }
+
+    @media (max-width: 600px) {
+        .data-grid { flex-direction: column; }
+        .card { width: 100%; }
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Weather Dashboard</h1>
+    <p class="subtitle">Live Environmental Monitoring</p>
+
+    <div id="warning" class="warning hidden"></div>
+
+    <div class="data-grid">
+        <div class="card">
+            <h2>Temperature</h2>
+            <p id="temp">--</p>
+            <div class="form-group">
+                <label>Temp Min</label>
+                <input type="number" id="tempMin" value="0">
+            </div>
+            <div class="form-group">
+                <label>Temp Max</label>
+                <input type="number" id="tempMax" value="40">
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Humidity</h2>
+            <p id="hum">--</p>
+            <div class="form-group">
+                <label>Hum Min</label>
+                <input type="number" id="humMin" value="10">
+            </div>
+            <div class="form-group">
+                <label>Hum Max</label>
+                <input type="number" id="humMax" value="90">
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Pressure</h2>
+            <p id="press">--</p>
+            <div class="form-group">
+                <label>Press Min</label>
+                <input type="number" id="pressMin" value="970">
+            </div>
+            <div class="form-group">
+                <label>Press Max</label>
+                <input type="number" id="pressMax" value="1030">
+            </div>
+        </div>
+    </div>
+
+    <div class="chart-wrapper">
+        <canvas id="chart"></canvas>
+    </div>
+</div>
+
+<script>
+let chart;
+
+// Fetch current sensor data
+async function fetchData() {
+    const res = await fetch("/current");
+    const data = await res.json();
+
+    document.getElementById("temp").innerText = data.temperature + " °C";
+    document.getElementById("hum").innerText = data.humidity + " %";
+    document.getElementById("press").innerText = data.pressure + " hPa";
+
+    checkWarnings(data);
+}
+
+// Draw history chart
+async function loadChart() {
+    const res = await fetch("/history");
+    const data = await res.json();
+
+    const recentData = data.slice(-50); // last 50 points
+    const temps = recentData.map(d => d.temperature).reverse();
+    const labels = recentData.map(d => new Date(d.timestamp).toLocaleTimeString()).reverse();
+
+    const canvas = document.getElementById("chart");
+    canvas.style.minWidth = `${recentData.length * 60}px`;
+    canvas.style.minHeight = "350px";
+
+    const ctx = canvas.getContext("2d");
+
+    if (chart) chart.destroy();
+
+    chart = new Chart(ctx, {
+        type: "line",
+        data: { labels: labels, datasets: [{ label: "Temperature (°C)", data: temps, fill: false, tension: 0.2 }] },
+        options: {
+            responsive: false,
+            maintainAspectRatio: false,
+            scales: {
+                x: { title: { display: true, text: 'Time' } },
+                y: { title: { display: true, text: 'Temperature (°C)' } }
+            }
+        }
+    });
+}
+
+// Warning system
+function checkWarnings(data) {
+    const warningDiv = document.getElementById("warning");
+
+    const tempMin = parseFloat(document.getElementById("tempMin").value);
+    const tempMax = parseFloat(document.getElementById("tempMax").value);
+    const humMin = parseFloat(document.getElementById("humMin").value);
+    const humMax = parseFloat(document.getElementById("humMax").value);
+    const pressMin = parseFloat(document.getElementById("pressMin").value);
+    const pressMax = parseFloat(document.getElementById("pressMax").value);
+
+    let messages = [];
+
+    // Threshold warnings
+    if (data.temperature < tempMin || data.temperature > tempMax)
+        messages.push("⚠ Temperature out of range!");
+    if (data.humidity < humMin || data.humidity > humMax)
+        messages.push("⚠ Humidity out of range!");
+    if (data.pressure < pressMin || data.pressure > pressMax)
+        messages.push("⚠ Pressure out of range!");
+
+    // Python analysis
+    if (data.analysis && data.analysis.length > 0)
+        messages = messages.concat(data.analysis);
+
+    if (messages.length > 0) {
+        warningDiv.innerHTML = messages.join("<br>");
+        warningDiv.classList.remove("hidden");
+    } else {
+        warningDiv.classList.add("hidden");
+    }
+}
+
+// Refresh data every 3 seconds
+setInterval(fetchData, 3000);
+fetchData();
+loadChart();
+</script>
+
+</body>
+</html>

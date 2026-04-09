@@ -1,0 +1,20 @@
+# Database
+data.db
+
+# Python Cache files
+__pycache__/
+*.pyc
+
+# Virtual Environment
+venv/
+.env/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Sense Hat emulator temp files
+*.log
+
+# VS Code particulars
+.vscode/
