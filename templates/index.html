@@ -124,11 +124,11 @@
             <p id="temp">--</p>
             <div class="form-group">
                 <label>Temp Min</label>
-                <input type="number" id="tempMin" value="0">
+                <input type="number" id="tempMin" value="0" onchange="updateThresholds()">
             </div>
             <div class="form-group">
                 <label>Temp Max</label>
-                <input type="number" id="tempMax" value="40">
+                <input type="number" id="tempMax" value="40" onchange="updateThresholds()">
             </div>
         </div>
 
@@ -137,11 +137,11 @@
             <p id="hum">--</p>
             <div class="form-group">
                 <label>Hum Min</label>
-                <input type="number" id="humMin" value="10">
+                <input type="number" id="humMin" value="10" onchange="updateThresholds()">
             </div>
             <div class="form-group">
                 <label>Hum Max</label>
-                <input type="number" id="humMax" value="90">
+                <input type="number" id="humMax" value="90" onchange="updateThresholds()">
             </div>
         </div>
 
@@ -150,11 +150,11 @@
             <p id="press">--</p>
             <div class="form-group">
                 <label>Press Min</label>
-                <input type="number" id="pressMin" value="970">
+                <input type="number" id="pressMin" value="970" onchange="updateThresholds()">
             </div>
             <div class="form-group">
                 <label>Press Max</label>
-                <input type="number" id="pressMax" value="1030">
+                <input type="number" id="pressMax" value="1030" onchange="updateThresholds()">
             </div>
         </div>
     </div>
@@ -177,6 +177,23 @@ async function fetchData() {
     document.getElementById("press").innerText = data.pressure + " hPa";
 
     checkWarnings(data);
+}
+
+function updateThresholds() {
+    fetch("/update-thresholds", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            tempMin: parseFloat(tempMin.value),
+            tempMax: parseFloat(tempMax.value),
+            humMin: parseFloat(humMin.value),
+            humMax: parseFloat(humMax.value),
+            pressMin: parseFloat(pressMin.value),
+            pressMax: parseFloat(pressMax.value),
+        })
+    });
 }
 
 // Draw history chart

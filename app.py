@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 import sqlite3
 
 app = Flask(__name__)
@@ -22,12 +22,13 @@ def current():
     conn.close()
 
     if row:
-        return jsonify({
-            "temperature": row[1],
-            "humidity": row[2],
-            "pressure": row[3],
-            "timestamp": row[4]
-        })
+        analysis = []
+
+        temp = row[1]
+        hum = row[2]
+        press = row[3]
+
+        
     return jsonify({"error": "no data available"})
 
 @app.route("/history")
@@ -49,5 +50,27 @@ def history():
             "timestamp": r[4]
         })
     return jsonify(data)
+
+@app.route("/update-thresholds", methods=["POST"])
+def update_thresholds():
+    data = request.json
+    conn = get_db()
+    c = conn.cursor()
+
+    c.execute(""" 
+    UPDATE thresholds SET
+    temp_min=?, temp_max=?,
+    hum_min=?, hum_max=?,
+    press_min=?, press_max=?
+""", (
+    data["tempMin"], data["tempMax"],
+    data["humMin"], data["humMax"],
+    data["pressMin"], data["pressMax"]
+))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"status": "updated"})
 
 app.run(host="0.0.0.0", port = 5000)

@@ -1,0 +1,6 @@
+Flask==2.2.2
+Flask-Cors==3.0.10
+sense-hat==2.6.0
+sense-emu==1.2.2
+numpy==1.24.2
+sqlite3==3.40.1

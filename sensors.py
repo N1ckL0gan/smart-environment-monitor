@@ -12,11 +12,8 @@ c = conn.cursor()
 #Analysis Variables
 previous_temp = None
 temp_history = []
+latest_analysis = []
 
-#Thresholds
-TEMP_MIN, TEMP_MAX = 0, 40
-HUM_MIN, HUM_MAX = 10, 90
-PRESS_MIN, PRESS_MAX = 970, 1030
 
 while True:
     try:
@@ -41,6 +38,13 @@ while True:
 
         # display message
         sense.show_message(message, scroll_speed = 0.075)
+
+        #Adjustable Warnings
+        c.execute(" SELECT * from thresholds LIMIT 1")
+        row = c.fetchone()
+
+        if row:
+            TEMP_MIN, TEMP_MAX, HUM_MIN, HUM_MAX, PRESS_MIN, PRESS_MAX = row
         
         # Warning system
         if temp < TEMP_MIN or temp > TEMP_MAX:
@@ -56,7 +60,7 @@ while True:
         #Spike Detection
         if previous_temp is not None:
             if abs(temp - previous_temp) > 5:
-                print("⚠ Spike Detected in temperature")
+                latest_analysis.append("⚠ Spike Detected in temperature")
         
 
         #Trend Detection
@@ -66,10 +70,10 @@ while True:
             last = temp_history[-5:]
 
             if all (x < y for x, y in zip(last, last[1:])):
-                print("📈 Increasing temperature trend")
+                latest_analysis.append("📈 Increasing temperature trend")
 
             elif all (x > y for x, y in zip( last, last[1:])):
-                print("📉 Decreasing temperature trend")
+                latest_analysis.append("📉 Decreasing temperature trend")
         
 
         #Prediction
@@ -80,10 +84,11 @@ while True:
                 predicted = temp + rate * 3
 
                 if predicted > TEMP_MAX:
-                    print("⚠ Temp likley to exceed threshold soon")
+                    latest_analysis.append("⚠ Temp likley to exceed threshold soon")
         
         #update previous
         previous_temp = temp
+        latest_analysis = []
 
         time.sleep(2)
 
