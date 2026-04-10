@@ -28,7 +28,15 @@ def current():
         hum = row[2]
         press = row[3]
 
-        
+        return jsonify({
+            "temperature": temp,
+            "humidity": hum,
+            "pressure": press,
+            "timestamp": row[4],
+            "analysis": analysis
+        })
+
+
     return jsonify({"error": "no data available"})
 
 @app.route("/history")
