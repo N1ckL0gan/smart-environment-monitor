@@ -18,3 +18,7 @@ Thumbs.db
 
 # VS Code particulars
 .vscode/
+
+# AWS
+certs/
+aws_resources.json
