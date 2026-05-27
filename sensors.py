@@ -1,98 +1,138 @@
-from sense_emu import SenseHat
-import sqlite3
+"""
+sensors.py
+----------
+Reads from the Sense HAT (or emulator) and publishes data to AWS IoT Core
+via MQTT. Analysis (spike/trend/prediction) is performed here before publish.
+
+Requirements:
+    pip install sense-emu AWSIoTPythonSDK
+
+AWS Setup needed:
+    - An IoT Thing created in AWS IoT Core
+    - Certificates downloaded into a 'certs/' folder:
+        certs/AmazonRootCA1.pem
+        certs/device-certificate.pem.crt
+        certs/private.pem.key
+    - An IoT Policy attached to the certificate allowing iot:Publish
+"""
+
 import time
+import json
+import os
+from sense_emu import SenseHat
+from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
 
-sense = SenseHat()
-sense.clear()
+# ── AWS IoT Core connection settings ──────────────────────────────────────────
+AWS_ENDPOINT   = os.environ.get("AWS_IOT_ENDPOINT", "YOUR_ENDPOINT.iot.REGION.amazonaws.com")
+CLIENT_ID      = os.environ.get("IOT_CLIENT_ID",    "smart-env-monitor-pi")
+TOPIC          = "smartenv/readings"
+CA_PATH        = "certs/AmazonRootCA1.pem"
+CERT_PATH      = "certs/device-certificate.pem.crt"
+KEY_PATH       = "certs/private.pem.key"
+PUBLISH_INTERVAL = 5  # seconds between readings
 
-# Connect to database
-conn = sqlite3.connect("data.db")
-c = conn.cursor()
-
-#Analysis Variables
-previous_temp = None
-temp_history = []
-latest_analysis = []
+# ── Analysis state ─────────────────────────────────────────────────────────────
+previous_temp  = None
+temp_history   = []
 
 
-while True:
-    try:
-        #take readings from all 3 sensors
-        temp = round(sense.get_temperature(), 1)
-        press = round(sense.get_pressure(), 1)
-        hum = round(sense.get_humidity(), 1)
+def connect_mqtt() -> AWSIoTMQTTClient:
+    """Create and return a connected AWS IoT MQTT client."""
+    client = AWSIoTMQTTClient(CLIENT_ID)
+    client.configureEndpoint(AWS_ENDPOINT, 8883)
+    client.configureCredentials(CA_PATH, KEY_PATH, CERT_PATH)
 
-        # add the readings to the database
-        c.execute("""
-        INSERT INTO readings (temperature, humidity, pressure)
-        VALUES (?, ?, ?)
-        """, (temp, hum, press))
+    # Connection resilience settings
+    client.configureAutoReconnectBackoffTime(1, 32, 20)
+    client.configureOfflinePublishQueueing(-1)   # unlimited queue
+    client.configureDrainingFrequency(2)
+    client.configureConnectDisconnectTimeout(10)
+    client.configureMQTTOperationTimeout(5)
 
-        conn.commit()
-    
-        # create a message on sense HAT
-        message = f"Temp: {temp}C Pressure: {press}hPa Humidity: {hum}%"
+    client.connect()
+    print(f"[MQTT] Connected to {AWS_ENDPOINT}")
+    return client
 
-        # display message in terminal for debugging
-        print(message)
 
-        # display message
-        sense.show_message(message, scroll_speed = 0.075)
+def analyse(temp: float, hum: float, press: float) -> list[str]:
+    """
+    Run local analysis on the latest reading and return a list of insight strings.
+    These are included in the MQTT payload so Lambda can store/act on them.
+    """
+    global previous_temp, temp_history
+    insights = []
 
-        #Adjustable Warnings
-        c.execute(" SELECT * from thresholds LIMIT 1")
-        row = c.fetchone()
+    # ── Spike detection ────────────────────────────────────────────────────────
+    if previous_temp is not None:
+        if abs(temp - previous_temp) > 5:
+            insights.append("⚠ Temperature spike detected")
 
-        if row:
-            TEMP_MIN, TEMP_MAX, HUM_MIN, HUM_MAX, PRESS_MIN, PRESS_MAX = row
-        
-        # Warning system
-        if temp < TEMP_MIN or temp > TEMP_MAX:
-            sense.show_message("TEMP WARNING")
-        elif hum < HUM_MIN or hum > HUM_MAX:
-            sense.show_message("HUM WARNING")
-        elif press < PRESS_MIN or press > PRESS_MAX:
-            sense.show_message("PRESS WARNING")
-        
+    # ── Trend detection (last 5 readings) ─────────────────────────────────────
+    temp_history.append(temp)
+    if len(temp_history) > 5:
+        temp_history.pop(0)          # keep only the last 5
 
-        # Data Analysis
+    if len(temp_history) == 5:
+        if all(x < y for x, y in zip(temp_history, temp_history[1:])):
+            insights.append("📈 Sustained temperature increase")
+        elif all(x > y for x, y in zip(temp_history, temp_history[1:])):
+            insights.append("📉 Sustained temperature decrease")
 
-        #Spike Detection
-        if previous_temp is not None:
-            if abs(temp - previous_temp) > 5:
-                latest_analysis.append("⚠ Spike Detected in temperature")
-        
+    # ── Predictive warning ─────────────────────────────────────────────────────
+    if len(temp_history) >= 2:
+        rate = temp_history[-1] - temp_history[-2]
+        if rate > 0:
+            predicted = temp + rate * 3
+            # 40 °C is a sensible default high; Lambda checks against user threshold
+            if predicted > 40:
+                insights.append("⚠ Temperature likely to exceed threshold soon")
 
-        #Trend Detection
-        temp_history.append(temp)
+    previous_temp = temp
+    return insights
 
-        if len(temp_history) > 5:
-            last = temp_history[-5:]
 
-            if all (x < y for x, y in zip(last, last[1:])):
-                latest_analysis.append("📈 Increasing temperature trend")
+def run():
+    sense  = SenseHat()
+    sense.clear()
+    client = connect_mqtt()
 
-            elif all (x > y for x, y in zip( last, last[1:])):
-                latest_analysis.append("📉 Decreasing temperature trend")
-        
+    print("[Sensor] Starting data collection loop …")
 
-        #Prediction
-        if len(temp_history) >= 2:
-            rate = temp_history[-1] - temp_history[-2]
+    while True:
+        try:
+            temp  = round(sense.get_temperature(), 1)
+            hum   = round(sense.get_humidity(),    1)
+            press = round(sense.get_pressure(),     1)
 
-            if rate > 0:
-                predicted = temp + rate * 3
+            insights = analyse(temp, hum, press)
 
-                if predicted > TEMP_MAX:
-                    latest_analysis.append("⚠ Temp likley to exceed threshold soon")
-        
-        #update previous
-        previous_temp = temp
-        latest_analysis = []
+            payload = {
+                "temperature": temp,
+                "humidity":    hum,
+                "pressure":    press,
+                "analysis":    insights,
+            }
 
-        time.sleep(2)
+            client.publish(TOPIC, json.dumps(payload), QoS=1)
+            print(f"[MQTT] Published → {payload}")
 
-    except Exception as e:
-        print("Error: ", e)
-        time.sleep(2)
+            # Scroll summary on the LED matrix
+            sense.show_message(
+                f"T:{temp}C H:{hum}% P:{press}hPa",
+                scroll_speed=0.075,
+            )
 
+            # Flash the matrix red if any warnings were detected
+            if insights:
+                sense.clear((255, 0, 0))
+                time.sleep(0.5)
+                sense.clear()
+
+        except Exception as exc:
+            print(f"[ERROR] {exc}")
+
+        time.sleep(PUBLISH_INTERVAL)
+
+
+if __name__ == "__main__":
+    run()

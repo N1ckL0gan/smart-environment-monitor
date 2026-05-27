@@ -3,267 +3,858 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Weather Dashboard</title>
+<title>Smart Environment Monitor</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
 
 <style>
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
+:root {
+    --bg:         #0a0c10;
+    --surface:    #111318;
+    --surface2:   #181c24;
+    --border:     #252a35;
+    --accent:     #00d4ff;
+    --accent2:    #7c3aed;
+    --warn:       #ff4d4d;
+    --ok:         #00e5a0;
+    --temp-color: #ff7043;
+    --hum-color:  #42a5f5;
+    --press-color:#ab47bc;
+    --text:       #e8eaf0;
+    --muted:      #6b7280;
+    --font-mono:  'JetBrains Mono', monospace;
+    --font-display:'Syne', sans-serif;
+}
 
-    body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background: linear-gradient(135deg, #4facfe 0%, #00c6fb 100%);
-        min-height: 100vh;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 10px;
-    }
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
-    .container {
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-        width: 100%;
-        max-width: 900px;
-        padding: 20px;
-        overflow: auto; /* enables scrolling on container */
-        max-height: 90vh; /* vertical scroll if too tall */
-    }
+body {
+    font-family: var(--font-mono);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+}
 
-    h1 {
-        color: #1e3a5f;
-        text-align: center;
-        margin-bottom: 5px;
-    }
+/* ── Grid noise overlay ── */
+body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='1' height='1' fill='%23ffffff08'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+}
 
-    .subtitle {
-        text-align: center;
-        color: #4a6fa5;
-        margin-bottom: 20px;
-    }
+/* ════════════════════════════════════════
+   LOGIN SCREEN
+════════════════════════════════════════ */
+#login-screen {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+    background: var(--bg);
+}
 
-    .data-grid {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 20px;
-        flex-wrap: wrap;
-    }
+.login-card {
+    width: 380px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 40px;
+    position: relative;
+}
 
-    .card {
-        flex: 1;
-        min-width: 150px;
-        background: linear-gradient(135deg, #e0f7ff, #ffffff);
-        border-radius: 10px;
-        padding: 15px;
-        text-align: center;
-    }
+.login-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+}
 
-    .card h2 { font-size: 16px; margin-bottom: 5px; }
-    .card p { font-size: 20px; font-weight: bold; }
+.login-logo {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 6px;
+    color: var(--text);
+}
 
-    .form-group {
-        margin-top: 8px;
-        text-align: left;
-    }
+.login-logo span { color: var(--accent); }
 
-    .card input {
-        width: 100%;
-        padding: 5px;
-        border: 1.5px solid #ddd;
-        border-radius: 5px;
-        font-size: 13px;
-    }
+.login-sub {
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 32px;
+}
 
-    .warning {
-        background: #ff6b6b;
-        color: white;
-        padding: 10px;
-        border-radius: 8px;
-        text-align: center;
-        margin-bottom: 15px;
-        font-weight: bold;
-    }
+.login-card label {
+    display: block;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    margin-bottom: 6px;
+}
 
-    .hidden { display: none; }
+.login-card input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    margin-bottom: 18px;
+    transition: border-color 0.2s;
+}
 
-    /* Chart wrapper scrollable */
-    .chart-wrapper {
-        overflow: auto; /* scrollbars appear if chart is larger than container */
-        width: 100%;
-        height: 400px; /* vertical scroll if needed */
-        border: 1px solid #ddd;
-        padding: 5px;
-    }
+.login-card input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
 
-    #chart {
-        min-width: 1200px; /* width grows with data */
-        min-height: 350px;
-    }
+.btn-login {
+    width: 100%;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: 3px;
+    padding: 12px;
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    margin-top: 4px;
+}
+.btn-login:hover  { opacity: 0.88; }
+.btn-login:active { transform: scale(0.98); }
+.btn-login:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    @media (max-width: 600px) {
-        .data-grid { flex-direction: column; }
-        .card { width: 100%; }
-    }
+#login-error {
+    margin-top: 14px;
+    color: var(--warn);
+    font-size: 12px;
+    text-align: center;
+    min-height: 18px;
+}
+
+/* ════════════════════════════════════════
+   MAIN DASHBOARD
+════════════════════════════════════════ */
+#dashboard { display: none; flex-direction: column; min-height: 100vh; }
+
+/* ── Top bar ── */
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky; top: 0; z-index: 10;
+}
+
+.topbar-left {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+}
+.topbar-left span { color: var(--accent); }
+
+.status-pill {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px;
+    color: var(--muted);
+}
+.status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 8px var(--ok);
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+}
+
+.topbar-right { display: flex; align-items: center; gap: 16px; }
+
+#user-label { font-size: 12px; color: var(--muted); }
+
+.btn-logout {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 6px 14px;
+    border-radius: 3px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+}
+.btn-logout:hover { color: var(--warn); border-color: var(--warn); }
+
+/* ── Content ── */
+.content { padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+
+/* ── Alert banner ── */
+.alert-banner {
+    background: rgba(255,77,77,0.08);
+    border: 1px solid rgba(255,77,77,0.4);
+    border-radius: 4px;
+    padding: 12px 18px;
+    font-size: 13px;
+    color: var(--warn);
+    line-height: 1.7;
+    animation: fadeIn 0.3s ease;
+}
+.alert-banner.hidden { display: none; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+/* ── Sensor cards ── */
+.cards-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.sensor-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+}
+
+.sensor-card.alert { border-color: var(--warn); }
+
+.sensor-card::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+}
+.sensor-card.temp  ::after { background: var(--temp-color); }
+.sensor-card.hum   ::after { background: var(--hum-color); }
+.sensor-card.press ::after { background: var(--press-color); }
+.sensor-card.temp  { border-bottom: 2px solid var(--temp-color); }
+.sensor-card.hum   { border-bottom: 2px solid var(--hum-color); }
+.sensor-card.press { border-bottom: 2px solid var(--press-color); }
+
+.card-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 10px;
+}
+
+.card-value {
+    font-family: var(--font-display);
+    font-size: 42px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+.sensor-card.temp  .card-value { color: var(--temp-color); }
+.sensor-card.hum   .card-value { color: var(--hum-color); }
+.sensor-card.press .card-value { color: var(--press-color); }
+
+.card-unit {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 18px;
+}
+
+.threshold-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
+
+.threshold-field label {
+    display: block;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    margin-bottom: 4px;
+}
+
+.threshold-field input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 6px 8px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    transition: border-color 0.2s;
+}
+.threshold-field input:focus { outline: none; border-color: var(--accent); }
+
+.save-btn {
+    margin-top: 12px;
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 7px;
+    border-radius: 3px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.save-btn:hover { color: var(--accent); border-color: var(--accent); }
+.save-btn.saved { color: var(--ok); border-color: var(--ok); }
+
+/* ── Chart panel ── */
+.chart-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px;
+}
+
+.panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.panel-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+}
+
+.range-btns { display: flex; gap: 6px; }
+
+.range-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 4px 10px;
+    border-radius: 3px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+}
+.range-btn:hover, .range-btn.active {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.chart-scroll { overflow-x: auto; }
+.chart-scroll canvas { min-width: 600px; }
+
+/* ── Analysis log ── */
+.analysis-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px;
+}
+
+.log-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.log-item {
+    display: flex; align-items: baseline; gap: 12px;
+    font-size: 12px;
+    padding: 8px 10px;
+    background: var(--bg);
+    border-radius: 3px;
+    border-left: 2px solid var(--border);
+}
+.log-item.warn { border-left-color: var(--warn); }
+.log-item.info { border-left-color: var(--accent); }
+
+.log-time { color: var(--muted); font-size: 10px; white-space: nowrap; }
+.log-msg  { color: var(--text); }
+
+.log-empty {
+    color: var(--muted);
+    font-size: 12px;
+    text-align: center;
+    padding: 20px;
+}
+
+/* ── Footer ── */
+.footer {
+    text-align: center;
+    padding: 16px;
+    font-size: 10px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 700px) {
+    .cards-row { grid-template-columns: 1fr; }
+    .card-value { font-size: 32px; }
+}
 </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>Weather Dashboard</h1>
-    <p class="subtitle">Live Environmental Monitoring</p>
+<!-- ══════════════════ LOGIN SCREEN ══════════════════ -->
+<div id="login-screen">
+    <div class="login-card">
+        <div class="login-logo">SMART<span>ENV</span></div>
+        <div class="login-sub">Environment Monitor · Secure Access</div>
 
-    <div id="warning" class="warning hidden"></div>
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" placeholder="you@example.com" autocomplete="username">
 
-    <div class="data-grid">
-        <div class="card">
-            <h2>Temperature</h2>
-            <p id="temp">--</p>
-            <div class="form-group">
-                <label>Temp Min</label>
-                <input type="number" id="tempMin" value="0" onchange="updateThresholds()">
-            </div>
-            <div class="form-group">
-                <label>Temp Max</label>
-                <input type="number" id="tempMax" value="40" onchange="updateThresholds()">
-            </div>
-        </div>
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
 
-        <div class="card">
-            <h2>Humidity</h2>
-            <p id="hum">--</p>
-            <div class="form-group">
-                <label>Hum Min</label>
-                <input type="number" id="humMin" value="10" onchange="updateThresholds()">
-            </div>
-            <div class="form-group">
-                <label>Hum Max</label>
-                <input type="number" id="humMax" value="90" onchange="updateThresholds()">
-            </div>
-        </div>
-
-        <div class="card">
-            <h2>Pressure</h2>
-            <p id="press">--</p>
-            <div class="form-group">
-                <label>Press Min</label>
-                <input type="number" id="pressMin" value="970" onchange="updateThresholds()">
-            </div>
-            <div class="form-group">
-                <label>Press Max</label>
-                <input type="number" id="pressMax" value="1030" onchange="updateThresholds()">
-            </div>
-        </div>
-    </div>
-
-    <div class="chart-wrapper">
-        <canvas id="chart"></canvas>
+        <button class="btn-login" id="btn-login" onclick="doLogin()">Sign In</button>
+        <div id="login-error"></div>
     </div>
 </div>
 
+<!-- ══════════════════ DASHBOARD ══════════════════ -->
+<div id="dashboard">
+
+    <div class="topbar">
+        <div class="topbar-left">SMART<span>ENV</span></div>
+        <div class="status-pill">
+            <div class="status-dot"></div>
+            <span id="last-updated">Connecting…</span>
+        </div>
+        <div class="topbar-right">
+            <span id="user-label"></span>
+            <button class="btn-logout" onclick="doLogout()">Sign Out</button>
+        </div>
+    </div>
+
+    <div class="content">
+
+        <!-- Alert banner -->
+        <div id="alert-banner" class="alert-banner hidden"></div>
+
+        <!-- Sensor cards -->
+        <div class="cards-row">
+
+            <div class="sensor-card temp" id="card-temp">
+                <div class="card-label">Temperature</div>
+                <div class="card-value" id="val-temp">--</div>
+                <div class="card-unit">degrees Celsius</div>
+                <div class="threshold-row">
+                    <div class="threshold-field">
+                        <label>Min °C</label>
+                        <input type="number" id="tempMin" value="0">
+                    </div>
+                    <div class="threshold-field">
+                        <label>Max °C</label>
+                        <input type="number" id="tempMax" value="40">
+                    </div>
+                </div>
+                <button class="save-btn" onclick="saveThresholds(this)">Save Thresholds</button>
+            </div>
+
+            <div class="sensor-card hum" id="card-hum">
+                <div class="card-label">Humidity</div>
+                <div class="card-value" id="val-hum">--</div>
+                <div class="card-unit">percent relative</div>
+                <div class="threshold-row">
+                    <div class="threshold-field">
+                        <label>Min %</label>
+                        <input type="number" id="humMin" value="10">
+                    </div>
+                    <div class="threshold-field">
+                        <label>Max %</label>
+                        <input type="number" id="humMax" value="90">
+                    </div>
+                </div>
+                <button class="save-btn" onclick="saveThresholds(this)">Save Thresholds</button>
+            </div>
+
+            <div class="sensor-card press" id="card-press">
+                <div class="card-label">Pressure</div>
+                <div class="card-value" id="val-press">--</div>
+                <div class="card-unit">hPa</div>
+                <div class="threshold-row">
+                    <div class="threshold-field">
+                        <label>Min hPa</label>
+                        <input type="number" id="pressMin" value="970">
+                    </div>
+                    <div class="threshold-field">
+                        <label>Max hPa</label>
+                        <input type="number" id="pressMax" value="1030">
+                    </div>
+                </div>
+                <button class="save-btn" onclick="saveThresholds(this)">Save Thresholds</button>
+            </div>
+
+        </div>
+
+        <!-- History chart -->
+        <div class="chart-panel">
+            <div class="panel-header">
+                <div class="panel-title">Sensor History</div>
+                <div class="range-btns">
+                    <button class="range-btn active" onclick="setRange(20, this)">20</button>
+                    <button class="range-btn" onclick="setRange(50, this)">50</button>
+                    <button class="range-btn" onclick="setRange(100, this)">100</button>
+                </div>
+            </div>
+            <div class="chart-scroll">
+                <canvas id="main-chart" height="280"></canvas>
+            </div>
+        </div>
+
+        <!-- Analysis log -->
+        <div class="analysis-panel">
+            <div class="panel-header">
+                <div class="panel-title">Analysis Log</div>
+            </div>
+            <ul class="log-list" id="log-list">
+                <li class="log-empty">No analysis events yet.</li>
+            </ul>
+        </div>
+
+    </div><!-- /content -->
+
+    <div class="footer">Smart Environment Monitor · AWS IoT Core · DynamoDB · Lambda</div>
+</div><!-- /dashboard -->
+
 <script>
-let chart;
+// ════════════════════════════════════════
+//  State
+// ════════════════════════════════════════
+let accessToken   = localStorage.getItem("sem_token") || "";
+let userEmail     = localStorage.getItem("sem_email") || "";
+let chartInstance = null;
+let historyLimit  = 20;
+let logEntries    = [];
 
-// Fetch current sensor data
-async function fetchData() {
-    const res = await fetch("/current");
-    const data = await res.json();
+// ════════════════════════════════════════
+//  Auth
+// ════════════════════════════════════════
+async function doLogin() {
+    const email    = document.getElementById("login-email").value.trim();
+    const password = document.getElementById("login-password").value;
+    const btn      = document.getElementById("btn-login");
+    const errDiv   = document.getElementById("login-error");
 
-    document.getElementById("temp").innerText = data.temperature + " °C";
-    document.getElementById("hum").innerText = data.humidity + " %";
-    document.getElementById("press").innerText = data.pressure + " hPa";
+    if (!email || !password) {
+        errDiv.textContent = "Email and password are required.";
+        return;
+    }
 
-    checkWarnings(data);
-}
+    btn.disabled     = true;
+    btn.textContent  = "Signing in…";
+    errDiv.textContent = "";
 
-function updateThresholds() {
-    fetch("/update-thresholds", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            tempMin: parseFloat(tempMin.value),
-            tempMax: parseFloat(tempMax.value),
-            humMin: parseFloat(humMin.value),
-            humMax: parseFloat(humMax.value),
-            pressMin: parseFloat(pressMin.value),
-            pressMax: parseFloat(pressMax.value),
-        })
-    });
-}
+    try {
+        const res  = await fetch("/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: email, password }),
+        });
+        const data = await res.json();
 
-// Draw history chart
-async function loadChart() {
-    const res = await fetch("/history");
-    const data = await res.json();
-
-    const recentData = data.slice(-50); // last 50 points
-    const temps = recentData.map(d => d.temperature).reverse();
-    const labels = recentData.map(d => new Date(d.timestamp).toLocaleTimeString()).reverse();
-
-    const canvas = document.getElementById("chart");
-    canvas.style.minWidth = `${recentData.length * 60}px`;
-    canvas.style.minHeight = "350px";
-
-    const ctx = canvas.getContext("2d");
-
-    if (chart) chart.destroy();
-
-    chart = new Chart(ctx, {
-        type: "line",
-        data: { labels: labels, datasets: [{ label: "Temperature (°C)", data: temps, fill: false, tension: 0.2 }] },
-        options: {
-            responsive: false,
-            maintainAspectRatio: false,
-            scales: {
-                x: { title: { display: true, text: 'Time' } },
-                y: { title: { display: true, text: 'Temperature (°C)' } }
-            }
+        if (!res.ok) {
+            errDiv.textContent = data.error || "Login failed.";
+            return;
         }
-    });
-}
 
-// Warning system
-function checkWarnings(data) {
-    const warningDiv = document.getElementById("warning");
+        accessToken = data.idToken;
+        userEmail   = email;
+        localStorage.setItem("sem_token", accessToken);
+        localStorage.setItem("sem_email", userEmail);
+        showDashboard();
 
-    const tempMin = parseFloat(document.getElementById("tempMin").value);
-    const tempMax = parseFloat(document.getElementById("tempMax").value);
-    const humMin = parseFloat(document.getElementById("humMin").value);
-    const humMax = parseFloat(document.getElementById("humMax").value);
-    const pressMin = parseFloat(document.getElementById("pressMin").value);
-    const pressMax = parseFloat(document.getElementById("pressMax").value);
-
-    let messages = [];
-
-    // Threshold warnings
-    if (data.temperature < tempMin || data.temperature > tempMax)
-        messages.push("⚠ Temperature out of range!");
-    if (data.humidity < humMin || data.humidity > humMax)
-        messages.push("⚠ Humidity out of range!");
-    if (data.pressure < pressMin || data.pressure > pressMax)
-        messages.push("⚠ Pressure out of range!");
-
-    // Python analysis
-    if (data.analysis && data.analysis.length > 0)
-        messages = messages.concat(data.analysis);
-
-    if (messages.length > 0) {
-        warningDiv.innerHTML = messages.join("<br>");
-        warningDiv.classList.remove("hidden");
-    } else {
-        warningDiv.classList.add("hidden");
+    } catch (err) {
+        errDiv.textContent = "Network error — check Flask is running.";
+    } finally {
+        btn.disabled    = false;
+        btn.textContent = "Sign In";
     }
 }
 
-// Refresh data every 3 seconds
-setInterval(fetchData, 3000);
-fetchData();
-loadChart();
+// Allow Enter key on password field
+document.getElementById("login-password")
+    .addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+
+function doLogout() {
+    accessToken = "";
+    localStorage.removeItem("sem_token");
+    localStorage.removeItem("sem_email");
+    document.getElementById("dashboard").style.display = "none";
+    document.getElementById("login-screen").style.display = "flex";
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+    clearInterval(window._refreshInterval);
+}
+
+function showDashboard() {
+    document.getElementById("login-screen").style.display   = "none";
+    document.getElementById("dashboard").style.display      = "flex";
+    document.getElementById("user-label").textContent       = userEmail;
+
+    loadThresholds();
+    refreshCurrent();
+    loadChart();
+
+    clearInterval(window._refreshInterval);
+    window._refreshInterval = setInterval(() => {
+        refreshCurrent();
+        loadChart();
+    }, 5000);
+}
+
+// Auto-login if token exists
+if (accessToken) showDashboard();
+
+// ════════════════════════════════════════
+//  API helpers
+// ════════════════════════════════════════
+async function api(path, opts = {}) {
+    const res = await fetch(path, {
+        ...opts,
+        headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Content-Type":  "application/json",
+            ...(opts.headers || {}),
+        },
+    });
+
+    if (res.status === 401) { doLogout(); return null; }
+    return res;
+}
+
+// ════════════════════════════════════════
+//  Live data
+// ════════════════════════════════════════
+async function refreshCurrent() {
+    const res = await api("/current");
+    if (!res || !res.ok) return;
+    const data = await res.json();
+
+    document.getElementById("val-temp").textContent  = data.temperature ?? "--";
+    document.getElementById("val-hum").textContent   = data.humidity    ?? "--";
+    document.getElementById("val-press").textContent = data.pressure     ?? "--";
+
+    document.getElementById("last-updated").textContent =
+        "Updated " + new Date(data.timestamp).toLocaleTimeString();
+
+    checkAlerts(data);
+}
+
+function checkAlerts(data) {
+    const alerts = data.alerts || [];
+    const banner = document.getElementById("alert-banner");
+
+    // Flash cards
+    const tempMin  = +document.getElementById("tempMin").value;
+    const tempMax  = +document.getElementById("tempMax").value;
+    const humMin   = +document.getElementById("humMin").value;
+    const humMax   = +document.getElementById("humMax").value;
+    const pressMin = +document.getElementById("pressMin").value;
+    const pressMax = +document.getElementById("pressMax").value;
+
+    document.getElementById("card-temp").classList.toggle("alert",
+        data.temperature < tempMin || data.temperature > tempMax);
+    document.getElementById("card-hum").classList.toggle("alert",
+        data.humidity < humMin || data.humidity > humMax);
+    document.getElementById("card-press").classList.toggle("alert",
+        data.pressure < pressMin || data.pressure > pressMax);
+
+    if (alerts.length > 0) {
+        banner.innerHTML = alerts.join("<br>");
+        banner.classList.remove("hidden");
+
+        // Add to log
+        const time = new Date().toLocaleTimeString();
+        alerts.forEach(msg => {
+            logEntries.unshift({ time, msg, warn: msg.startsWith("⚠") });
+        });
+        renderLog();
+    } else {
+        banner.classList.add("hidden");
+    }
+}
+
+function renderLog() {
+    const ul = document.getElementById("log-list");
+    if (logEntries.length === 0) {
+        ul.innerHTML = '<li class="log-empty">No analysis events yet.</li>';
+        return;
+    }
+    ul.innerHTML = logEntries.slice(0, 40).map(e =>
+        `<li class="log-item ${e.warn ? 'warn' : 'info'}">
+            <span class="log-time">${e.time}</span>
+            <span class="log-msg">${e.msg}</span>
+        </li>`
+    ).join("");
+}
+
+// ════════════════════════════════════════
+//  Chart
+// ════════════════════════════════════════
+function setRange(n, btn) {
+    document.querySelectorAll(".range-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    historyLimit = n;
+    loadChart();
+}
+
+async function loadChart() {
+    const res = await api(`/history?limit=${historyLimit}`);
+    if (!res || !res.ok) return;
+    const raw = await res.json();
+
+    const data   = [...raw].reverse();   // oldest → newest
+    const labels = data.map(d => new Date(d.timestamp).toLocaleTimeString());
+    const temps  = data.map(d => d.temperature);
+    const hums   = data.map(d => d.humidity);
+    const press  = data.map(d => d.pressure);
+
+    const canvas = document.getElementById("main-chart");
+    canvas.style.minWidth = `${Math.max(600, data.length * 50)}px`;
+
+    if (chartInstance) chartInstance.destroy();
+
+    chartInstance = new Chart(canvas.getContext("2d"), {
+        type: "line",
+        data: {
+            labels,
+            datasets: [
+                {
+                    label:           "Temperature (°C)",
+                    data:            temps,
+                    borderColor:     "rgba(255,112,67,0.9)",
+                    backgroundColor: "rgba(255,112,67,0.08)",
+                    fill:            true,
+                    tension:         0.35,
+                    pointRadius:     3,
+                    pointBackgroundColor: "rgba(255,112,67,1)",
+                },
+                {
+                    label:           "Humidity (%)",
+                    data:            hums,
+                    borderColor:     "rgba(66,165,245,0.9)",
+                    backgroundColor: "rgba(66,165,245,0.08)",
+                    fill:            true,
+                    tension:         0.35,
+                    pointRadius:     3,
+                    pointBackgroundColor: "rgba(66,165,245,1)",
+                },
+                {
+                    label:           "Pressure (hPa)",
+                    data:            press,
+                    borderColor:     "rgba(171,71,188,0.9)",
+                    backgroundColor: "rgba(171,71,188,0.08)",
+                    fill:            true,
+                    tension:         0.35,
+                    pointRadius:     3,
+                    pointBackgroundColor: "rgba(171,71,188,1)",
+                    yAxisID: "y2",
+                },
+            ],
+        },
+        options: {
+            responsive:          false,
+            maintainAspectRatio: false,
+            interaction: { mode: "index", intersect: false },
+            plugins: {
+                legend: {
+                    labels: { color: "#6b7280", font: { family: "'JetBrains Mono'" } },
+                },
+                tooltip: {
+                    backgroundColor: "#181c24",
+                    borderColor:     "#252a35",
+                    borderWidth:     1,
+                    titleColor:      "#e8eaf0",
+                    bodyColor:       "#9ca3af",
+                    titleFont:       { family: "'JetBrains Mono'" },
+                    bodyFont:        { family: "'JetBrains Mono'" },
+                },
+            },
+            scales: {
+                x: {
+                    ticks: { color: "#4b5563", font: { size: 10 } },
+                    grid:  { color: "#1c2130" },
+                },
+                y: {
+                    ticks: { color: "#4b5563", font: { size: 10 } },
+                    grid:  { color: "#1c2130" },
+                    title: { display: true, text: "°C / %", color: "#4b5563", font: { size: 10 } },
+                },
+                y2: {
+                    position: "right",
+                    ticks:    { color: "#ab47bc", font: { size: 10 } },
+                    grid:     { drawOnChartArea: false },
+                    title:    { display: true, text: "hPa", color: "#ab47bc", font: { size: 10 } },
+                },
+            },
+        },
+    });
+}
+
+// ════════════════════════════════════════
+//  Thresholds
+// ════════════════════════════════════════
+async function loadThresholds() {
+    const res = await api("/thresholds");
+    if (!res || !res.ok) return;
+    const t = await res.json();
+
+    if (t.temp_min  != null) document.getElementById("tempMin").value  = t.temp_min;
+    if (t.temp_max  != null) document.getElementById("tempMax").value  = t.temp_max;
+    if (t.hum_min   != null) document.getElementById("humMin").value   = t.hum_min;
+    if (t.hum_max   != null) document.getElementById("humMax").value   = t.hum_max;
+    if (t.press_min != null) document.getElementById("pressMin").value = t.press_min;
+    if (t.press_max != null) document.getElementById("pressMax").value = t.press_max;
+}
+
+async function saveThresholds(btn) {
+    const res = await api("/update-thresholds", {
+        method: "POST",
+        body: JSON.stringify({
+            tempMin:  +document.getElementById("tempMin").value,
+            tempMax:  +document.getElementById("tempMax").value,
+            humMin:   +document.getElementById("humMin").value,
+            humMax:   +document.getElementById("humMax").value,
+            pressMin: +document.getElementById("pressMin").value,
+            pressMax: +document.getElementById("pressMax").value,
+        }),
+    });
+
+    if (res && res.ok) {
+        btn.textContent = "✓ Saved";
+        btn.classList.add("saved");
+        setTimeout(() => {
+            btn.textContent = "Save Thresholds";
+            btn.classList.remove("saved");
+        }, 2000);
+    }
+}
 </script>
 
 </body>
