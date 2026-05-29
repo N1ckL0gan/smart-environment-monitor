@@ -73,11 +73,11 @@ def create_dynamodb_tables():
                 BillingMode="PAY_PER_REQUEST",   # on-demand – no capacity planning needed
             )
             print(f"  ✓ Created {table_name}")
-        except dynamo.exceptions.ResourceInExistsException:
+        except dynamo.exceptions.ResourceInUseException:
             print(f"  – {table_name} already exists, skipping")
 
     # Insert default thresholds
-    time.sleep(5)   # let tables become ACTIVE
+    time.sleep(15)   # let tables become ACTIVE
     db = boto3.resource("dynamodb", region_name=REGION)
     db.Table("sem_thresholds").put_item(Item={
         "device_id": DEVICE_ID,
@@ -159,7 +159,7 @@ def deploy_lambda(role_arn: str):
         "DEVICE_ID":        DEVICE_ID,
     }
 
-    time.sleep(10)   # IAM role propagation delay
+    time.sleep(20)   # IAM role propagation delay
 
     try:
         resp = lam.create_function(
@@ -233,25 +233,27 @@ def create_iot_resources(lambda_arn: str):
     iot.attach_thing_principal(thingName=DEVICE_ID, principal=cert_arn)
     print("  ✓ Policy attached")
 
-    # IoT Rule → Lambda
+# IoT Rule → Lambda
     rule_name = "SmartEnvIngestRule"
-    iot.create_topic_rule(
-        ruleName=rule_name,
-        topicRulePayload={
-            "sql":         "SELECT * FROM 'smartenv/readings'",
-            "description": "Forward sensor readings to Lambda",
-            "actions": [{
-                "lambda": {"functionArn": lambda_arn}
-            }],
-            "errorAction": {
-                "cloudwatchLogs": {
-                    "logGroupName": "/aws/iot/SmartEnvErrors",
-                    "roleArn": resources["lambda_role_arn"],
-                }
-            },
-        },
-    )
-    print(f"  ✓ IoT Rule '{rule_name}' created")
+    print("  Waiting 30s for IAM role to propagate …")
+    time.sleep(30)
+    try:
+        iot.create_topic_rule(
+                    ruleName=rule_name,
+                    topicRulePayload={
+                        "sql":         "SELECT * FROM 'smartenv/readings'",
+                        "description": "Forward sensor readings to Lambda",
+                        "actions": [{
+                            "lambda": {"functionArn": lambda_arn}
+                        }],
+                    },
+                )
+        print(f"  ✓ IoT Rule '{rule_name}' created")
+    except Exception as e:
+        if "already exists" in str(e).lower() or "ResourceAlreadyExists" in str(e):
+            print(f"  – IoT Rule already exists, skipping")
+        else:
+            raise
 
     # Allow IoT to invoke Lambda
     try:

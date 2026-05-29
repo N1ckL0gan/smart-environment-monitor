@@ -36,7 +36,6 @@ body {
     overflow-x: hidden;
 }
 
-/* ── Grid noise overlay ── */
 body::before {
     content: '';
     position: fixed; inset: 0;
@@ -45,9 +44,7 @@ body::before {
     z-index: 0;
 }
 
-/* ════════════════════════════════════════
-   LOGIN SCREEN
-════════════════════════════════════════ */
+/* LOGIN */
 #login-screen {
     position: fixed; inset: 0;
     display: flex; align-items: center; justify-content: center;
@@ -78,7 +75,6 @@ body::before {
     margin-bottom: 6px;
     color: var(--text);
 }
-
 .login-logo span { color: var(--accent); }
 
 .login-sub {
@@ -110,11 +106,7 @@ body::before {
     margin-bottom: 18px;
     transition: border-color 0.2s;
 }
-
-.login-card input:focus {
-    outline: none;
-    border-color: var(--accent);
-}
+.login-card input:focus { outline: none; border-color: var(--accent); }
 
 .btn-login {
     width: 100%;
@@ -144,12 +136,9 @@ body::before {
     min-height: 18px;
 }
 
-/* ════════════════════════════════════════
-   MAIN DASHBOARD
-════════════════════════════════════════ */
+/* DASHBOARD */
 #dashboard { display: none; flex-direction: column; min-height: 100vh; }
 
-/* ── Top bar ── */
 .topbar {
     display: flex;
     align-items: center;
@@ -185,7 +174,6 @@ body::before {
 }
 
 .topbar-right { display: flex; align-items: center; gap: 16px; }
-
 #user-label { font-size: 12px; color: var(--muted); }
 
 .btn-logout {
@@ -203,10 +191,8 @@ body::before {
 }
 .btn-logout:hover { color: var(--warn); border-color: var(--warn); }
 
-/* ── Content ── */
 .content { padding: 24px; display: flex; flex-direction: column; gap: 20px; }
 
-/* ── Alert banner ── */
 .alert-banner {
     background: rgba(255,77,77,0.08);
     border: 1px solid rgba(255,77,77,0.4);
@@ -220,7 +206,7 @@ body::before {
 .alert-banner.hidden { display: none; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 
-/* ── Sensor cards ── */
+/* SENSOR CARDS */
 .cards-row {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -236,16 +222,7 @@ body::before {
     overflow: hidden;
     transition: border-color 0.3s;
 }
-
 .sensor-card.alert { border-color: var(--warn); }
-
-.sensor-card::after {
-    content: '';
-    position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
-}
-.sensor-card.temp  ::after { background: var(--temp-color); }
-.sensor-card.hum   ::after { background: var(--hum-color); }
-.sensor-card.press ::after { background: var(--press-color); }
 .sensor-card.temp  { border-bottom: 2px solid var(--temp-color); }
 .sensor-card.hum   { border-bottom: 2px solid var(--hum-color); }
 .sensor-card.press { border-bottom: 2px solid var(--press-color); }
@@ -319,7 +296,7 @@ body::before {
 .save-btn:hover { color: var(--accent); border-color: var(--accent); }
 .save-btn.saved { color: var(--ok); border-color: var(--ok); }
 
-/* ── Chart panel ── */
+/* CHART */
 .chart-panel {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -359,10 +336,10 @@ body::before {
     border-color: var(--accent);
 }
 
-.chart-scroll { overflow-x: auto; }
-.chart-scroll canvas { min-width: 600px; }
+.chart-scroll { width: 100%; position: relative; height: 320px; }
+.chart-scroll canvas { width: 100% !important; height: 100% !important; }
 
-/* ── Analysis log ── */
+/* ANALYSIS LOG */
 .analysis-panel {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -389,7 +366,6 @@ body::before {
 }
 .log-item.warn { border-left-color: var(--warn); }
 .log-item.info { border-left-color: var(--accent); }
-
 .log-time { color: var(--muted); font-size: 10px; white-space: nowrap; }
 .log-msg  { color: var(--text); }
 
@@ -400,7 +376,6 @@ body::before {
     padding: 20px;
 }
 
-/* ── Footer ── */
 .footer {
     text-align: center;
     padding: 16px;
@@ -411,35 +386,30 @@ body::before {
     letter-spacing: 1.5px;
 }
 
-/* ── Responsive ── */
 @media (max-width: 700px) {
     .cards-row { grid-template-columns: 1fr; }
     .card-value { font-size: 32px; }
+    .topbar { padding: 12px 16px; }
+    .content { padding: 16px; }
 }
 </style>
 </head>
 <body>
 
-<!-- ══════════════════ LOGIN SCREEN ══════════════════ -->
 <div id="login-screen">
     <div class="login-card">
         <div class="login-logo">SMART<span>ENV</span></div>
         <div class="login-sub">Environment Monitor · Secure Access</div>
-
         <label for="login-email">Email</label>
         <input type="email" id="login-email" placeholder="you@example.com" autocomplete="username">
-
         <label for="login-password">Password</label>
         <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
-
         <button class="btn-login" id="btn-login" onclick="doLogin()">Sign In</button>
         <div id="login-error"></div>
     </div>
 </div>
 
-<!-- ══════════════════ DASHBOARD ══════════════════ -->
 <div id="dashboard">
-
     <div class="topbar">
         <div class="topbar-left">SMART<span>ENV</span></div>
         <div class="status-pill">
@@ -453,13 +423,9 @@ body::before {
     </div>
 
     <div class="content">
-
-        <!-- Alert banner -->
         <div id="alert-banner" class="alert-banner hidden"></div>
 
-        <!-- Sensor cards -->
         <div class="cards-row">
-
             <div class="sensor-card temp" id="card-temp">
                 <div class="card-label">Temperature</div>
                 <div class="card-value" id="val-temp">--</div>
@@ -510,10 +476,8 @@ body::before {
                 </div>
                 <button class="save-btn" onclick="saveThresholds(this)">Save Thresholds</button>
             </div>
-
         </div>
 
-        <!-- History chart -->
         <div class="chart-panel">
             <div class="panel-header">
                 <div class="panel-title">Sensor History</div>
@@ -524,11 +488,10 @@ body::before {
                 </div>
             </div>
             <div class="chart-scroll">
-                <canvas id="main-chart" height="280"></canvas>
+                <canvas id="main-chart"></canvas>
             </div>
         </div>
 
-        <!-- Analysis log -->
         <div class="analysis-panel">
             <div class="panel-header">
                 <div class="panel-title">Analysis Log</div>
@@ -537,38 +500,28 @@ body::before {
                 <li class="log-empty">No analysis events yet.</li>
             </ul>
         </div>
-
-    </div><!-- /content -->
+    </div>
 
     <div class="footer">Smart Environment Monitor · AWS IoT Core · DynamoDB · Lambda</div>
-</div><!-- /dashboard -->
+</div>
 
 <script>
-// ════════════════════════════════════════
-//  State
-// ════════════════════════════════════════
 let accessToken   = localStorage.getItem("sem_token") || "";
 let userEmail     = localStorage.getItem("sem_email") || "";
 let chartInstance = null;
 let historyLimit  = 20;
 let logEntries    = [];
 
-// ════════════════════════════════════════
-//  Auth
-// ════════════════════════════════════════
 async function doLogin() {
     const email    = document.getElementById("login-email").value.trim();
     const password = document.getElementById("login-password").value;
     const btn      = document.getElementById("btn-login");
     const errDiv   = document.getElementById("login-error");
 
-    if (!email || !password) {
-        errDiv.textContent = "Email and password are required.";
-        return;
-    }
+    if (!email || !password) { errDiv.textContent = "Email and password are required."; return; }
 
-    btn.disabled     = true;
-    btn.textContent  = "Signing in…";
+    btn.disabled = true;
+    btn.textContent = "Signing in…";
     errDiv.textContent = "";
 
     try {
@@ -579,17 +532,13 @@ async function doLogin() {
         });
         const data = await res.json();
 
-        if (!res.ok) {
-            errDiv.textContent = data.error || "Login failed.";
-            return;
-        }
+        if (!res.ok) { errDiv.textContent = data.error || "Login failed."; return; }
 
         accessToken = data.idToken;
         userEmail   = email;
         localStorage.setItem("sem_token", accessToken);
         localStorage.setItem("sem_email", userEmail);
         showDashboard();
-
     } catch (err) {
         errDiv.textContent = "Network error — check Flask is running.";
     } finally {
@@ -598,7 +547,6 @@ async function doLogin() {
     }
 }
 
-// Allow Enter key on password field
 document.getElementById("login-password")
     .addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
 
@@ -613,9 +561,9 @@ function doLogout() {
 }
 
 function showDashboard() {
-    document.getElementById("login-screen").style.display   = "none";
-    document.getElementById("dashboard").style.display      = "flex";
-    document.getElementById("user-label").textContent       = userEmail;
+    document.getElementById("login-screen").style.display = "none";
+    document.getElementById("dashboard").style.display    = "flex";
+    document.getElementById("user-label").textContent     = userEmail;
 
     loadThresholds();
     refreshCurrent();
@@ -628,12 +576,8 @@ function showDashboard() {
     }, 5000);
 }
 
-// Auto-login if token exists
 if (accessToken) showDashboard();
 
-// ════════════════════════════════════════
-//  API helpers
-// ════════════════════════════════════════
 async function api(path, opts = {}) {
     const res = await fetch(path, {
         ...opts,
@@ -643,14 +587,10 @@ async function api(path, opts = {}) {
             ...(opts.headers || {}),
         },
     });
-
     if (res.status === 401) { doLogout(); return null; }
     return res;
 }
 
-// ════════════════════════════════════════
-//  Live data
-// ════════════════════════════════════════
 async function refreshCurrent() {
     const res = await api("/current");
     if (!res || !res.ok) return;
@@ -658,8 +598,7 @@ async function refreshCurrent() {
 
     document.getElementById("val-temp").textContent  = data.temperature ?? "--";
     document.getElementById("val-hum").textContent   = data.humidity    ?? "--";
-    document.getElementById("val-press").textContent = data.pressure     ?? "--";
-
+    document.getElementById("val-press").textContent = data.pressure    ?? "--";
     document.getElementById("last-updated").textContent =
         "Updated " + new Date(data.timestamp).toLocaleTimeString();
 
@@ -667,10 +606,8 @@ async function refreshCurrent() {
 }
 
 function checkAlerts(data) {
-    const alerts = data.alerts || [];
-    const banner = document.getElementById("alert-banner");
-
-    // Flash cards
+    const alerts   = data.alerts || [];
+    const banner   = document.getElementById("alert-banner");
     const tempMin  = +document.getElementById("tempMin").value;
     const tempMax  = +document.getElementById("tempMax").value;
     const humMin   = +document.getElementById("humMin").value;
@@ -688,12 +625,8 @@ function checkAlerts(data) {
     if (alerts.length > 0) {
         banner.innerHTML = alerts.join("<br>");
         banner.classList.remove("hidden");
-
-        // Add to log
         const time = new Date().toLocaleTimeString();
-        alerts.forEach(msg => {
-            logEntries.unshift({ time, msg, warn: msg.startsWith("⚠") });
-        });
+        alerts.forEach(msg => logEntries.unshift({ time, msg, warn: msg.startsWith("⚠") }));
         renderLog();
     } else {
         banner.classList.add("hidden");
@@ -714,9 +647,6 @@ function renderLog() {
     ).join("");
 }
 
-// ════════════════════════════════════════
-//  Chart
-// ════════════════════════════════════════
 function setRange(n, btn) {
     document.querySelectorAll(".range-btn").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
@@ -729,18 +659,15 @@ async function loadChart() {
     if (!res || !res.ok) return;
     const raw = await res.json();
 
-    const data   = [...raw].reverse();   // oldest → newest
+    const data   = [...raw].reverse();
     const labels = data.map(d => new Date(d.timestamp).toLocaleTimeString());
     const temps  = data.map(d => d.temperature);
     const hums   = data.map(d => d.humidity);
     const press  = data.map(d => d.pressure);
 
-    const canvas = document.getElementById("main-chart");
-    canvas.style.minWidth = `${Math.max(600, data.length * 50)}px`;
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
 
-    if (chartInstance) chartInstance.destroy();
-
-    chartInstance = new Chart(canvas.getContext("2d"), {
+    chartInstance = new Chart(document.getElementById("main-chart").getContext("2d"), {
         type: "line",
         data: {
             labels,
@@ -779,7 +706,7 @@ async function loadChart() {
             ],
         },
         options: {
-            responsive:          false,
+            responsive:          true,
             maintainAspectRatio: false,
             interaction: { mode: "index", intersect: false },
             plugins: {
@@ -798,7 +725,7 @@ async function loadChart() {
             },
             scales: {
                 x: {
-                    ticks: { color: "#4b5563", font: { size: 10 } },
+                    ticks: { color: "#4b5563", font: { size: 10 }, maxRotation: 45 },
                     grid:  { color: "#1c2130" },
                 },
                 y: {
@@ -817,9 +744,6 @@ async function loadChart() {
     });
 }
 
-// ════════════════════════════════════════
-//  Thresholds
-// ════════════════════════════════════════
 async function loadThresholds() {
     const res = await api("/thresholds");
     if (!res || !res.ok) return;

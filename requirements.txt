@@ -1,0 +1,21 @@
+# Smart Environment Monitor — Python dependencies
+# Install with: 
+
+# Web framework
+flask>=3.0.0
+
+# AWS SDK
+boto3>=1.34.0
+
+# JWT verification for Cognito tokens
+PyJWT[crypto]>=2.8.0
+cryptography>=42.0.0
+
+# HTTP (used by app.py to fetch Cognito JWKS)
+requests>=2.31.0
+
+# Sense HAT emulator (use sense-hat on real hardware)
+sense-emu>=1.2
+
+# AWS IoT MQTT client (Pi only)
+AWSIoTPythonSDK>=1.5.0
